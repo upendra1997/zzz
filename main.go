@@ -1,35 +1,22 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
+	"log/slog"
+	"main/api"
+	"main/storage"
 	"net/http"
+
+	"github.com/gorilla/mux"
 )
 
-func accounts(rw http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		rw.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		rw.WriteHeader(http.StatusInternalServerError)
-		return
-	}
-	defer r.Body.Close()
-	var req AccountRequest
-	err = json.Unmarshal(body, &req)
-	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	fmt.Printf("Account ID: %d, Initial Balance: %s\n", req.AccountId, req.InitialBalance)
-	rw.WriteHeader(http.StatusOK)
-}
-
 func main() {
-	http.HandleFunc("/accounts", accounts)
-	http.ListenAndServe(":8000", nil)
-	fmt.Println("Hello World")
+	storage := storage.NewInMemoryStorage()
+	accountHandler := api.NewAccountHandlers(storage)
+
+	router := mux.NewRouter()
+	router.HandleFunc("/accounts", accountHandler.CreateAccount).Methods("POST")
+	router.HandleFunc("/accounts/{account_id}", accountHandler.GetAccount).Methods("GET")
+	router.HandleFunc("/transactions", accountHandler.SubmitTransaction).Methods("POST")
+	slog.Info("Starting server on :8000")
+	slog.Error("Server Crashed", http.ListenAndServe(":8000", router))
 }
