@@ -238,7 +238,7 @@ ok  	main/api	1.434s
 ### Running
 ```bash
 ❯ go run .
-2025/11/12 02:59:00 INFO Using SQLite storage
+2025/11/12 02:59:00 INFO Using SQLite storage db_file=""
 2025/11/12 02:59:00 INFO Starting server on :8080
 ```
 and sample curl commands:
