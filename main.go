@@ -11,7 +11,7 @@ import (
 )
 
 func main() {
-	storageType := flag.String("storage", "inmemory", "Type of storage to use: 'inmemory' or 'sqlite'")
+	storageType := flag.String("storage", "sqlite", "Type of storage to use: 'inmemory' or 'sqlite'")
 	sqliteDBFile := flag.String("sqlite_db_file", "", "File path for SQLite database: 'store.db'; defaults to :memory: if empty or invalid path")
 	flag.Parse()
 
