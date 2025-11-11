@@ -3,7 +3,6 @@ package storage
 import (
 	"database/sql"
 	"log/slog"
-	"path"
 
 	_ "github.com/glebarez/go-sqlite"
 )
@@ -18,11 +17,11 @@ type SqliteStorageTransaction struct {
 }
 
 func NewSqliteStorage(filePath string) *SqliteStorage {
-	location := path.Clean(filePath)
-	if location == "" {
-		location = ":memory:"
+	if filePath == "" {
+		filePath = ":memory:"
 	}
-	db, err := sql.Open("sqlite", location)
+	slog.Error(filePath)
+	db, err := sql.Open("sqlite", filePath)
 	if err != nil {
 		slog.Error("Cannot create sqlite DB", "error", err)
 		return nil
