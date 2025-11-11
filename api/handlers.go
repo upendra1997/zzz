@@ -112,10 +112,6 @@ func (h *AccountHandlers) SubmitTransaction(rw http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// In a real system, you'd want to handle currency arithmetic carefully (e.g., using big.Float)
-	// For simplicity, we'll just parse to float64 for basic validation.
-	// NOTE: Using string for balance/amount in models to preserve precision as requested.
-	// Actual arithmetic would require a proper decimal/big.Float library.
 	amountFloat, _, err := big.ParseFloat(req.Amount, 10, PRECISION, big.ToNearestEven)
 	if err != nil || amountFloat.Cmp(big.NewFloat(0.0)) <= 0 {
 		http.Error(rw, "Invalid transaction amount", http.StatusBadRequest)

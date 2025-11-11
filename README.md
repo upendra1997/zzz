@@ -108,3 +108,38 @@ Here are the primary API endpoints provided by this service:
              http://localhost:8080/transactions
         ```
     *   **Response**: `200 OK` (empty body on success) or an error (e.g., insufficient funds, account not found).
+
+### Approaches
+#### Race Conditions:
+1.  **Simple Approach**: The initial implementation uses a straightforward method to handle account and transaction management. However, this approach does not include concurrency controls, which lead to race conditions when multiple transactions are processed simultaneously.
+2. **Gloabal Locking Approach**: An improved version that introduces a global mutex to serialize access to the account data store. This approach prevents race conditions by ensuring that only one transaction can modify the account balances at a time, albeit at the cost of reduced concurrency and potential performance bottlenecks.
+```go
+type AccountHandlers struct {
+	storage storage.Storage
+	lock    sync.RWMutex
+}
+```
+3. **Fine-Grained Locking Approach**: A more sophisticated solution that employs per-account mutexes to allow concurrent transactions on different accounts while still preventing race conditions. This approach balances concurrency and data integrity by locking only the accounts involved in a transaction.
+
+#### Atomicity and Consistency:
+1.  **Simple Approach**: Transactions are processed without ensuring atomicity, which can lead to inconsistent states if a failure occurs mid-transaction.
+2. **Two-Phase Commit Simulation**: An enhanced method that simulates a two-phase commit protocol to ensure that both the debit and credit operations of a transaction are completed successfully or not at all. This approach helps maintain data consistency even in the face of errors or failures during transaction processing. We can do that by adding a rollback in case of failure.
+```go
+// Attempt to update destination account
+err = h.storage.Set(req.DestinationAccountId, fmt.Sprintf(SPRINTF_FORMAT, newDestinationBalance))
+if err != nil {
+	// Rollback source account if destination update fails
+	rollbackErr := h.storage.Set(req.SourceAccountId, sourceBalance)
+	if rollbackErr != nil {
+		// Log this error, as the system is now in an inconsistent state
+		// For simplicity, we'll return a generic error, but in a real system,
+		// this would trigger an alert for manual intervention.
+		http.Error(rw, fmt.Sprintf("Failed to update destination account balance and rollback failed: %s", rollbackErr.Error()), http.StatusInternalServerError)
+		return
+	}
+}
+```
+#### concurrency:
+1.  **Simple Approach**: Lacks any concurrency controls, leading to potential data races and incorrect balances when multiple transactions are processed simultaneously.
+2. **Gloabal Locking Approach**: Introduces a global mutex to serialize access to the account data store, preventing race conditions, but at the cost of reduced concurrency.
+3. **Isolation**: Each transaction operate on local copy of the account balances, and save the changes to the main balance once the transaction is successful. This way, concurrent transactions do not interfere with each other until they are ready to commit their changes, and mulitple transactions can be processed in parallel.
