@@ -7,6 +7,7 @@ import (
 	"main/model"
 	"main/storage"
 	"math/big"
+	"sync"
 
 	"net/http"
 	"strconv"
@@ -14,11 +15,14 @@ import (
 	"github.com/gorilla/mux" // Using mux for more advanced routing, especially for path variables
 )
 
-const PRECISION uint = 9
+const PRECISION uint = 128
+
+var SPRINTF_FORMAT = "%." + strconv.Itoa(int(PRECISION)) + "f"
 
 // AccountHandlers provides HTTP handlers for account-related operations.
 type AccountHandlers struct {
 	storage storage.Storage
+	lock    sync.RWMutex
 }
 
 // NewAccountHandlers creates and returns a new AccountHandlers instance.
@@ -43,8 +47,17 @@ func (h *AccountHandlers) CreateAccount(rw http.ResponseWriter, r *http.Request)
 		http.Error(rw, "Invalid request body format", http.StatusBadRequest)
 		return
 	}
+	initialBalanceFloat, _, err := big.ParseFloat(req.InitialBalance, 10, PRECISION, big.ToNearestEven)
+	if initialBalanceFloat.Cmp(big.NewFloat(0.0)) < 0 || err != nil {
+		http.Error(rw, "Invalid Initial Balance", http.StatusBadRequest)
+		return
+	}
 
-	err = h.storage.Set(req.AccountId, req.InitialBalance)
+	initialBalanceStr := fmt.Sprintf(SPRINTF_FORMAT, initialBalanceFloat)
+
+	h.lock.Lock()
+	defer h.lock.Unlock()
+	err = h.storage.Set(req.AccountId, initialBalanceStr)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusConflict) // Using StatusConflict for existing account
 		return
@@ -64,6 +77,8 @@ func (h *AccountHandlers) GetAccount(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.lock.RLock()
+	defer h.lock.RUnlock()
 	balance, err := h.storage.Get(accountID)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusNotFound)
@@ -112,6 +127,8 @@ func (h *AccountHandlers) SubmitTransaction(rw http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	h.lock.Lock()
+	defer h.lock.Unlock()
 	sourceBalance, err := h.storage.Get(req.SourceAccountId)
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Source account not found: %s", err.Error()), http.StatusNotFound)
@@ -136,13 +153,13 @@ func (h *AccountHandlers) SubmitTransaction(rw http.ResponseWriter, r *http.Requ
 	newSourceBalance := sourceBalanceAmount.Sub(sourceBalanceAmount, amountFloat)
 	newDestinationBalance := destinationBalanceAmount.Add(destinationBalanceAmount, amountFloat)
 
-	err = h.storage.Set(req.SourceAccountId, fmt.Sprintf("%.9f", newSourceBalance))
+	err = h.storage.Set(req.SourceAccountId, fmt.Sprintf(SPRINTF_FORMAT, newSourceBalance))
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Failed to update source account balance: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.storage.Set(req.DestinationAccountId, fmt.Sprintf("%.9f", newDestinationBalance))
+	err = h.storage.Set(req.DestinationAccountId, fmt.Sprintf(SPRINTF_FORMAT, newDestinationBalance))
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Failed to update destination account balance: %s", err.Error()), http.StatusInternalServerError)
 		return
