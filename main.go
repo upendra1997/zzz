@@ -17,6 +17,6 @@ func main() {
 	router.HandleFunc("/accounts", accountHandler.CreateAccount).Methods("POST")
 	router.HandleFunc("/accounts/{account_id}", accountHandler.GetAccount).Methods("GET")
 	router.HandleFunc("/transactions", accountHandler.SubmitTransaction).Methods("POST")
-	slog.Info("Starting server on :8000")
-	slog.Error("Server Crashed", http.ListenAndServe(":8000", router))
+	slog.Info("Starting server on :8080")
+	slog.Error("Server Crashed", http.ListenAndServe(":8080", router))
 }
