@@ -30,7 +30,7 @@ type FlakySqliteTransaction struct {
 // NewMockSqlite creates a new MockStorage instance.
 func NewMockSqlite() *FlakySqlite {
 	return &FlakySqlite{
-		storage.NewSqliteStorage(),
+		storage.NewSqliteStorage(""),
 	}
 }
 

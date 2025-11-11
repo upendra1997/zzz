@@ -14,6 +14,17 @@ The core idea is to provide endpoints for common banking operations: creating ac
     *   Submit transactions to transfer funds between two accounts.
     *   Basic validation for transaction amounts and account existence.
 *   **In-Memory Storage**: Uses a simple in-memory map for account data, making it easy to set up and test without external database dependencies.
+```bash
+go run . -storage inmemory
+2025/11/12 03:04:21 INFO Using in-memory storage
+2025/11/12 03:04:21 INFO Starting server on :8080
+```
+*  **Persistent Storage**: Supports SQLite for persistent storage of account data, allowing data to persist across application restarts.
+```bash
+go run . -storage sqlite -sqlite_db_file store.db
+2025/11/12 03:05:10 INFO Using SQLite storage db_file=store.db
+2025/11/12 03:05:10 INFO Starting server on :8080
+```
 
 ## Setup Instructions
 
@@ -227,6 +238,7 @@ ok  	main/api	1.434s
 ### Running
 ```bash
 ❯ go run .
+2025/11/12 02:59:00 INFO Using SQLite storage
 2025/11/12 02:59:00 INFO Starting server on :8080
 ```
 and sample curl commands:

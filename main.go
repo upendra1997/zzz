@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log/slog"
 	"main/api"
 	"main/storage"
@@ -10,9 +11,24 @@ import (
 )
 
 func main() {
-	// storage := storage.NewInMemoryStorage()
-	storage := storage.NewSqliteStorage()
-	accountHandler := api.NewAccountHandlers(storage)
+	storageType := flag.String("storage", "inmemory", "Type of storage to use: 'inmemory' or 'sqlite'")
+	sqliteDBFile := flag.String("sqlite_db_file", "", "File path for SQLite database: 'store.db'; defaults to :memory: if empty or invalid path")
+	flag.Parse()
+
+	var s storage.Storage
+	switch *storageType {
+	case "inmemory":
+		slog.Info("Using in-memory storage")
+		s = storage.NewInMemoryStorage()
+	case "sqlite":
+		slog.Info("Using SQLite storage", "db_file", *sqliteDBFile)
+		s = storage.NewSqliteStorage(*sqliteDBFile)
+	default:
+		slog.Error("Invalid storage type specified", "storageType", *storageType)
+		return
+	}
+
+	accountHandler := api.NewAccountHandlers(s)
 
 	router := mux.NewRouter()
 	router.HandleFunc("/accounts", accountHandler.CreateAccount).Methods("POST")
