@@ -15,9 +15,9 @@ import (
 	"github.com/gorilla/mux" // Using mux for more advanced routing, especially for path variables
 )
 
-const PRECISION uint = 128
+const PRECISION uint = 64
 
-var SPRINTF_FORMAT = "%." + strconv.Itoa(int(PRECISION)) + "f"
+var SPRINTF_FORMAT = "%.19f"
 
 // AccountHandlers provides HTTP handlers for account-related operations.
 type AccountHandlers struct {
