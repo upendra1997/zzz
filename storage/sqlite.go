@@ -3,19 +3,22 @@ package storage
 import (
 	"database/sql"
 	"log/slog"
+
+	_ "github.com/glebarez/go-sqlite"
 )
 
 type SqliteStorage struct {
 	*sql.DB
 }
 
-func NewSqliteStorage() (*SqliteStorage, error) {
+func NewSqliteStorage() *SqliteStorage {
 	db, err := sql.Open("sqlite", ":memory:")
 	if err != nil {
 		slog.Error("Cannot create sqlite DB", "error", err)
+		return nil
 	}
 	db.Exec(`CREATE TABLE IF NOT EXISTS kv_store (key INTEGER PRIMARY KEY, value TEXT);`)
-	return &SqliteStorage{db}, nil
+	return &SqliteStorage{db}
 }
 
 func (s *SqliteStorage) Set(key Key, value Value) error {

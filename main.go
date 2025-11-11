@@ -10,7 +10,8 @@ import (
 )
 
 func main() {
-	storage := storage.NewInMemoryStorage()
+	// storage := storage.NewInMemoryStorage()
+	storage := storage.NewSqliteStorage()
 	accountHandler := api.NewAccountHandlers(storage)
 
 	router := mux.NewRouter()
