@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"main/api"
 	"main/model"
+	"main/storage"
 	"math"
 	"math/rand/v2"
 	"net/http"
@@ -19,23 +20,19 @@ import (
 // mockFlakyStorage implements the storage.Storage interface for testing purposes.
 // It deliberately does NOT use any locks to expose race conditions.
 type mockFlakyStorage struct {
-	accounts map[uint64]string
+	storage storage.SqliteStorage
 }
 
 // NewMockStorage creates a new MockStorage instance.
 func NewMockStorage() *mockFlakyStorage {
 	return &mockFlakyStorage{
-		accounts: make(map[uint64]string),
+		storage: *storage.NewSqliteStorage(),
 	}
 }
 
 // Get retrieves the balance for a given account ID.
 func (ms *mockFlakyStorage) Get(accountID uint64) (string, error) {
-	balance, ok := ms.accounts[accountID]
-	if !ok {
-		return "", fmt.Errorf("account %d not found", accountID)
-	}
-	return balance, nil
+	return ms.storage.Get(accountID)
 }
 
 // Set sets the balance for a given account ID.
@@ -44,12 +41,11 @@ func (ms *mockFlakyStorage) Set(accountID uint64, balance string) error {
 		// Simulate a failure 1% of the time
 		return fmt.Errorf("simulated storage failure for account %d", accountID)
 	}
-	ms.accounts[accountID] = balance
-	return nil
+	return ms.storage.Set(accountID, balance)
 }
 
 func (ms *mockFlakyStorage) Delete(accountID uint64) error {
-	return nil
+	return ms.storage.Delete(accountID)
 }
 
 // TestSubmitTransaction_RaceCondition tests for race conditions in SubmitTransaction.
