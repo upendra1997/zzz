@@ -7,29 +7,30 @@ import (
 	"main/api"
 	"main/model"
 	"math"
+	"math/rand/v2"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
 	"sync"
 	"testing"
-	"time" // Added for potential delays
+	// Added for potential delays
 )
 
-// mockStorage implements the storage.Storage interface for testing purposes.
+// mockFlakyStorage implements the storage.Storage interface for testing purposes.
 // It deliberately does NOT use any locks to expose race conditions.
-type mockStorage struct {
+type mockFlakyStorage struct {
 	accounts map[uint64]string
 }
 
-// newMockStorage creates a new MockStorage instance.
-func newMockStorage() *mockStorage {
-	return &mockStorage{
+// NewMockStorage creates a new MockStorage instance.
+func NewMockStorage() *mockFlakyStorage {
+	return &mockFlakyStorage{
 		accounts: make(map[uint64]string),
 	}
 }
 
 // Get retrieves the balance for a given account ID.
-func (ms *mockStorage) Get(accountID uint64) (string, error) {
+func (ms *mockFlakyStorage) Get(accountID uint64) (string, error) {
 	balance, ok := ms.accounts[accountID]
 	if !ok {
 		return "", fmt.Errorf("account %d not found", accountID)
@@ -38,22 +39,24 @@ func (ms *mockStorage) Get(accountID uint64) (string, error) {
 }
 
 // Set sets the balance for a given account ID.
-func (ms *mockStorage) Set(accountID uint64, balance string) error {
-	// Simulate a small delay to increase the chance of race conditions
-	time.Sleep(1 * time.Millisecond)
+func (ms *mockFlakyStorage) Set(accountID uint64, balance string) error {
+	if rand.Float64() < 0.01 {
+		// Simulate a failure 1% of the time
+		return fmt.Errorf("simulated storage failure for account %d", accountID)
+	}
 	ms.accounts[accountID] = balance
 	return nil
 }
 
-func (ms *mockStorage) Delete(accountID uint64) error {
+func (ms *mockFlakyStorage) Delete(accountID uint64) error {
 	return nil
 }
 
 // TestSubmitTransaction_RaceCondition tests for race conditions in SubmitTransaction.
 // This test is designed to be run with the Go race detector: `go test -race ./...`
-func TestSubmitTransaction_RaceCondition(t *testing.T) {
+func TestSubmitTransaction_InconsistententBalance(t *testing.T) {
 	// Initialize mock storage without locks
-	mockStorage := newMockStorage()
+	mockStorage := NewMockStorage()
 	handlers := api.NewAccountHandlers(mockStorage)
 
 	// Create initial accounts
@@ -122,14 +125,11 @@ func TestSubmitTransaction_RaceCondition(t *testing.T) {
 	t.Logf("Actual final balance (Account 2): %.9f", finalBalance2Float)
 
 	epsilon := 1e-3
+	initialTotalBalnace := 2000.0
+	finalTotalBalance := finalBalance1Float + finalBalance2Float
 
-	if math.Abs(finalBalance1Float-expectedFinalBalance1) > epsilon {
-		t.Errorf("Account %d balance mismatch: Expected %f, Got %f",
-			account1ID, expectedFinalBalance1, finalBalance1Float)
-	}
-
-	if math.Abs(finalBalance2Float-expectedFinalBalance2) > epsilon {
-		t.Errorf("Account %d balance mismatch: Expected %f, Got %f",
-			account2ID, expectedFinalBalance2, finalBalance2Float)
+	if math.Abs(finalTotalBalance-initialTotalBalnace) > epsilon {
+		t.Errorf("Total balance mismatch: Expected %f, Got %f",
+			initialTotalBalnace, finalTotalBalance)
 	}
 }
