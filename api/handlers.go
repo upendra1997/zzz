@@ -57,11 +57,14 @@ func (h *AccountHandlers) CreateAccount(rw http.ResponseWriter, r *http.Request)
 
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	err = h.storage.Set(req.AccountId, initialBalanceStr)
+	tx := h.storage.Begin()
+	defer tx.Rollback()
+	err = tx.Set(req.AccountId, initialBalanceStr)
 	if err != nil {
 		http.Error(rw, err.Error(), http.StatusConflict) // Using StatusConflict for existing account
 		return
 	}
+	tx.Commit()
 
 	rw.WriteHeader(http.StatusOK)
 }
@@ -149,17 +152,20 @@ func (h *AccountHandlers) SubmitTransaction(rw http.ResponseWriter, r *http.Requ
 	newSourceBalance := sourceBalanceAmount.Sub(sourceBalanceAmount, amountFloat)
 	newDestinationBalance := destinationBalanceAmount.Add(destinationBalanceAmount, amountFloat)
 
-	err = h.storage.Set(req.SourceAccountId, fmt.Sprintf(SPRINTF_FORMAT, newSourceBalance))
+	tx := h.storage.Begin()
+	defer tx.Rollback()
+	err = tx.Set(req.SourceAccountId, fmt.Sprintf(SPRINTF_FORMAT, newSourceBalance))
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Failed to update source account balance: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
 
-	err = h.storage.Set(req.DestinationAccountId, fmt.Sprintf(SPRINTF_FORMAT, newDestinationBalance))
+	err = tx.Set(req.DestinationAccountId, fmt.Sprintf(SPRINTF_FORMAT, newDestinationBalance))
 	if err != nil {
 		http.Error(rw, fmt.Sprintf("Failed to update destination account balance: %s", err.Error()), http.StatusInternalServerError)
 		return
 	}
+	tx.Commit()
 
 	rw.WriteHeader(http.StatusOK)
 }
